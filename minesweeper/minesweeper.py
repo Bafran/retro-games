@@ -6,6 +6,8 @@ pygame.init()
 l = 600
 w = 600
 
+cellgridsize = 12
+
 screen = pygame.display.set_mode((l, w))
 clock = pygame.time.Clock()
 pygame.display.set_caption('Minesweeper')
@@ -18,13 +20,14 @@ green = (0,255,0)
 blue = (0,0,255)
 white = (255, 255, 255)
 
-h.gamestart(10, screen, green, l)
-pygame.display.update()
+board = h.gamestart(cellgridsize, screen, green, l)
 
 while gameplay:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             gameplay=False
+    
+    h.checkmine(cellgridsize, screen, board, l, font)
 
 pygame.quit()
 quit()
