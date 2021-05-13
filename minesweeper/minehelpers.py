@@ -1,5 +1,6 @@
 import pygame
 import random
+import math
 
 cellsize = 10
 black = (0, 0, 0)
@@ -8,6 +9,8 @@ green = (0,255,0)
 blue = (0,0,255)
 white = (255, 255, 255)
 
+firstclick = True
+
 class Cell:
     def __init__(self, x, y):
         self.x = x
@@ -15,11 +18,12 @@ class Cell:
         self.ismine = False
         self.flagged = False
         self.adj = 0
+        self.blank = False
     
     def mine(self):
         self.ismine = 1
 
-    def check(self, xloc, yloc, board):
+    def check(self, xloc, yloc, board, screen, spacing):
         x = int(xloc)
         y = int(yloc)
         adjacent = 0
@@ -27,27 +31,38 @@ class Cell:
         x += 1
         for cell in range(3):
             cell -= 1
-            if board[str(x) + str(y+cell)].ismine:
-                adjacent += 1
+            try:
+                if board[str(x) + str(y+cell)].ismine:
+                    adjacent += 1
+            except:
+                pass
         # look one column left
         x -= 2
         for cell in range(3):
             cell -= 1
-            if board[str(x) + str(y+cell)].ismine:
-                adjacent += 1
+            try:
+                if board[str(x) + str(y+cell)].ismine:
+                    adjacent += 1
+            except:
+                pass
         # look one up
         x = int(xloc)
         y += 1
-        if board[str(x) + str(y)].ismine:
-                adjacent += 1
+        try:
+            if board[str(x) + str(y)].ismine:
+                    adjacent += 1
+        except:
+            pass
         # look one down
         y -= 2
-        if board[str(x) + str(y)].ismine:
-                adjacent += 1
+        try:
+            if board[str(x) + str(y)].ismine:
+                    adjacent += 1
+        except:
+            pass
         # store value
         self.adj = adjacent
         return adjacent
-
 
 def gamestart(l, screen, colour, h):
     # Populate will cells
@@ -55,16 +70,16 @@ def gamestart(l, screen, colour, h):
     board = {}
 
     global cellsize
-    cellsize = round((h/l)/3)
+    cellsize = round((h/l))
 
     spacing = h/l
     for row in range(l):
         for cell in range(l):
             key = str(row) + str(cell)
             board[key] = Cell(row, cell)
-            pygame.draw.rect(screen, colour, [(row)*spacing, (cell)*spacing, cellsize, cellsize])
+            pygame.draw.rect(screen, colour, [(row)*spacing, (cell)*spacing, cellsize, cellsize], width=1)
 
-    populatemines(l, board, 0, spacing, screen)
+    
 
     pygame.display.update()
     return board
@@ -73,9 +88,11 @@ def populatemines(l, board, num_mines, spacing, screen):
     if num_mines < l:
         x = str(random.randint(0, l-1))
         y = str(random.randint(0, l-1))
-        board[x+y].ismine = True
-        pygame.draw.rect(screen, white, [int(x)*spacing, int(y)*spacing, cellsize, cellsize])
-        num_mines += 1
+        if board[x+y].blank == False:
+            board[x+y].ismine = True
+            num_mines += 1
+        else:
+            populatemines(l, board, num_mines, spacing, screen)
         populatemines(l, board, num_mines, spacing, screen)
     else:
         return
@@ -83,20 +100,36 @@ def populatemines(l, board, num_mines, spacing, screen):
 def checkmine(l, screen, board, h, font):
     spacing = h/l
     x, y = pygame.mouse.get_pos()
-    x = round(x/spacing)*spacing
-    y = round(y/spacing)*spacing
+    x = math.floor(x/spacing)*spacing
+    y = math.floor(y/spacing)*spacing
 
     try:
-        xloc = str(round((x/spacing)))
-        yloc = str(round((y/spacing)))
+        xloc = str(math.floor((x/spacing)))
+        yloc = str(math.floor((y/spacing)))
         relmine = board[xloc + yloc]
     except:
         pass
 
     m1, m2, m3 = pygame.mouse.get_pressed(num_buttons=3)
+
+    global firstclick
+
+    # check if this is the first click
+    if m1 and firstclick:
+        # remove the mine "cover"
+        pygame.draw.rect(screen, black, [x, y, cellsize, cellsize])
+        relmine.blank = True
+        #populate mines
+        populatemines(l, board, 0, spacing, screen)
+        firstclick = False
+        # check surrounding mines and draw it on the screen
+        adj = relmine.check(xloc, yloc, board, screen, spacing)
+        screen.blit(font.render(str(adj), True, white), [x+(spacing/2)-10, y+(spacing/2)-10])
+        # popadj(xloc, yloc, board, screen, spacing, font)
+        return
     
     # mouse 1: delete a cell
-    if m1:
+    if m1 and not firstclick:
         # remove the mine "cover"
         pygame.draw.rect(screen, black, [x, y, cellsize, cellsize])
         # check if the player lost
@@ -104,12 +137,67 @@ def checkmine(l, screen, board, h, font):
             pygame.quit()
             quit()
         # check surrounding mines and draw it on the screen
-        adj = relmine.check(xloc, yloc, board)
-        screen.blit(font.render(str(adj), True, white), [x, y])
+        adj = relmine.check(xloc, yloc, board, screen, spacing)
+        screen.blit(font.render(str(adj), True, white), [x+(spacing/2)-10, y+(spacing/2)-10])
     
     # mouse 2: flag a cell
-    if m3:
+    if m3 and not firstclick:
         relmine.flagged = True
         pygame.draw.rect(screen, blue, [x, y, cellsize, cellsize])
 
     pygame.display.update()
+
+def popadj(xloc, yloc, board, screen, spacing, font):
+    x = int(xloc)
+    y = int(yloc)
+    # look one column right
+    x += 1
+    for cell in range(3):
+        cell -= 1
+        try:
+            relmine = board[str(x) + str(y+cell)]
+            pygame.draw.rect(screen, black, [x*spacing, (y+cell)*spacing, cellsize, cellsize])
+            adj = relmine.check(x, y+cell, board, screen, spacing)
+            screen.blit(font.render(str(adj), True, white), [x*spacing+(spacing/2)-10, y*spacing+(spacing/2)-10])
+            # if adj == 0:
+            #     popadj(x, y+cell, board, screen, spacing, font)
+        except:
+            pass
+    # look one column left
+    x -= 2
+    for cell in range(3):
+        cell -= 1
+        try:
+            relmine = board[str(x) + str(y+cell)]
+            pygame.draw.rect(screen, black, [x*spacing, (y+cell)*spacing, cellsize, cellsize])
+            adj = relmine.check(x, y+cell, board, screen, spacing)
+            screen.blit(font.render(str(adj), True, white), [x*spacing+(spacing/2)-10, y*spacing+(spacing/2)-10])
+            # if adj == 0:
+            #     popadj(x, y+cell, board, screen, spacing, font)
+        except:
+            pass
+    # look one up
+    x = int(xloc)
+    y += 1
+    cell = 0
+    try:
+        relmine = board[str(x) + str(y+cell)]
+        pygame.draw.rect(screen, black, [x*spacing, (y+cell)*spacing, cellsize, cellsize])
+        adj = relmine.check(x, y+cell, board, screen, spacing)
+        screen.blit(font.render(str(adj), True, white), [x*spacing+(spacing/2)-10, y*spacing+(spacing/2)-10])
+        # if adj == 0:
+        #     popadj(x, y+cell, board, screen, spacing, font)
+    except:
+        pass
+    # look one down
+    y -= 2
+    cell = 0
+    try:
+        relmine = board[str(x) + str(y+cell)]
+        pygame.draw.rect(screen, black, [x*spacing, (y+cell)*spacing, cellsize, cellsize])
+        adj = relmine.check(x, y+cell, board, screen, spacing)
+        screen.blit(font.render(str(adj), True, white), [x*spacing+(spacing/2)-10, y*spacing+(spacing/2)-10])
+        # if adj == 0:
+        #     popadj(x, y+cell, board, screen, spacing, font)
+    except:
+        pass
