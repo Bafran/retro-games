@@ -23,7 +23,7 @@ class Cell:
     def mine(self):
         self.ismine = 1
 
-    def check(self, xloc, yloc, board, screen, spacing):
+    def check(self, xloc, yloc, board):
         x = int(xloc)
         y = int(yloc)
         adjacent = 0
@@ -79,8 +79,6 @@ def gamestart(l, screen, colour, h):
             board[key] = Cell(row, cell)
             pygame.draw.rect(screen, colour, [(row)*spacing, (cell)*spacing, cellsize, cellsize], width=1)
 
-    
-
     pygame.display.update()
     return board
 
@@ -123,9 +121,10 @@ def checkmine(l, screen, board, h, font):
         populatemines(l, board, 0, spacing, screen)
         firstclick = False
         # check surrounding mines and draw it on the screen
-        adj = relmine.check(xloc, yloc, board, screen, spacing)
+        adjcount(board, l)
+        adj = relmine.adj
         screen.blit(font.render(str(adj), True, white), [x+(spacing/2)-10, y+(spacing/2)-10])
-        # popadj(xloc, yloc, board, screen, spacing, font)
+        popadj(xloc, yloc, board, screen, spacing, font, 0)
         return
     
     # mouse 1: delete a cell
@@ -137,7 +136,7 @@ def checkmine(l, screen, board, h, font):
             pygame.quit()
             quit()
         # check surrounding mines and draw it on the screen
-        adj = relmine.check(xloc, yloc, board, screen, spacing)
+        adj = relmine.adj
         screen.blit(font.render(str(adj), True, white), [x+(spacing/2)-10, y+(spacing/2)-10])
     
     # mouse 2: flag a cell
@@ -147,57 +146,34 @@ def checkmine(l, screen, board, h, font):
 
     pygame.display.update()
 
-def popadj(xloc, yloc, board, screen, spacing, font):
-    x = int(xloc)
-    y = int(yloc)
-    # look one column right
-    x += 1
-    for cell in range(3):
-        cell -= 1
-        try:
-            relmine = board[str(x) + str(y+cell)]
-            pygame.draw.rect(screen, black, [x*spacing, (y+cell)*spacing, cellsize, cellsize])
-            adj = relmine.check(x, y+cell, board, screen, spacing)
-            screen.blit(font.render(str(adj), True, white), [x*spacing+(spacing/2)-10, y*spacing+(spacing/2)-10])
-            # if adj == 0:
-            #     popadj(x, y+cell, board, screen, spacing, font)
-        except:
-            pass
-    # look one column left
-    x -= 2
-    for cell in range(3):
-        cell -= 1
-        try:
-            relmine = board[str(x) + str(y+cell)]
-            pygame.draw.rect(screen, black, [x*spacing, (y+cell)*spacing, cellsize, cellsize])
-            adj = relmine.check(x, y+cell, board, screen, spacing)
-            screen.blit(font.render(str(adj), True, white), [x*spacing+(spacing/2)-10, y*spacing+(spacing/2)-10])
-            # if adj == 0:
-            #     popadj(x, y+cell, board, screen, spacing, font)
-        except:
-            pass
-    # look one up
-    x = int(xloc)
-    y += 1
-    cell = 0
-    try:
-        relmine = board[str(x) + str(y+cell)]
-        pygame.draw.rect(screen, black, [x*spacing, (y+cell)*spacing, cellsize, cellsize])
-        adj = relmine.check(x, y+cell, board, screen, spacing)
-        screen.blit(font.render(str(adj), True, white), [x*spacing+(spacing/2)-10, y*spacing+(spacing/2)-10])
-        # if adj == 0:
-        #     popadj(x, y+cell, board, screen, spacing, font)
-    except:
-        pass
-    # look one down
-    y -= 2
-    cell = 0
-    try:
-        relmine = board[str(x) + str(y+cell)]
-        pygame.draw.rect(screen, black, [x*spacing, (y+cell)*spacing, cellsize, cellsize])
-        adj = relmine.check(x, y+cell, board, screen, spacing)
-        screen.blit(font.render(str(adj), True, white), [x*spacing+(spacing/2)-10, y*spacing+(spacing/2)-10])
-        # if adj == 0:
-        #     popadj(x, y+cell, board, screen, spacing, font)
-    except:
-        pass
+def adjcount(board, l):
+    for row in range(l):
+        for col in range(l):
+            relmine = board[str(row) + str(col)]
+            relmine.check(row, col, board)
+
+def popadj(xloc, yloc, board, screen, spacing, font, depth):
+    cellx = int(xloc)
+    celly = int(yloc)
+
+    if depth == 8:
+        return
+
+    for x in range(-1, 2):
+        for y in range(-1, 2):
+            if x == 0 & y == 0:
+                    continue
+            try:
+                newx = cellx+x
+                newy = celly+y
+
+                if board[str(newx) + str(newy)].adj == 0:
+                    pygame.draw.rect(screen, black, [(newx)*spacing, (newy)*spacing, cellsize, cellsize])
+                    popadj(newx, newy, board, screen, spacing, font, depth+1)
+                else:
+                    pygame.draw.rect(screen, black, [(newx)*spacing, (newy)*spacing, cellsize, cellsize])
+
+                    adj = board[str(newx) + str(newy)].adj
+                    screen.blit(font.render(str(adj), True, white), [((newx)*spacing)+(spacing/2)-10, ((newy)*spacing)+(spacing/2)-10])
+            except:
+                pass
