@@ -19,6 +19,7 @@ class Cell:
         self.flagged = False
         self.adj = 0
         self.blank = False
+        self.popped = False
     
     def mine(self):
         self.ismine = 1
@@ -86,7 +87,7 @@ def populatemines(l, board, num_mines, spacing, screen):
     if num_mines < l:
         x = str(random.randint(0, l-1))
         y = str(random.randint(0, l-1))
-        if board[x+y].blank == False:
+        if board[x+y].blank == False and board[x+y].ismine == False:
             board[x+y].ismine = True
             num_mines += 1
         else:
@@ -156,8 +157,8 @@ def popadj(xloc, yloc, board, screen, spacing, font, depth):
     cellx = int(xloc)
     celly = int(yloc)
 
-    if depth == 8:
-        return
+    # if depth == 8:
+    #    return
 
     for x in range(-1, 2):
         for y in range(-1, 2):
@@ -167,13 +168,15 @@ def popadj(xloc, yloc, board, screen, spacing, font, depth):
                 newx = cellx+x
                 newy = celly+y
 
-                if board[str(newx) + str(newy)].adj == 0:
+                if board[str(newx) + str(newy)].adj == 0 and board[str(newx) + str(newy)].popped == False:
+                    board[str(newx) + str(newy)].popped = True
                     pygame.draw.rect(screen, black, [(newx)*spacing, (newy)*spacing, cellsize, cellsize])
                     popadj(newx, newy, board, screen, spacing, font, depth+1)
                 else:
+
                     pygame.draw.rect(screen, black, [(newx)*spacing, (newy)*spacing, cellsize, cellsize])
 
                     adj = board[str(newx) + str(newy)].adj
                     screen.blit(font.render(str(adj), True, white), [((newx)*spacing)+(spacing/2)-10, ((newy)*spacing)+(spacing/2)-10])
             except:
-                pass
+                continue
